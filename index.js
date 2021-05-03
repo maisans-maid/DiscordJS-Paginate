@@ -3,6 +3,7 @@ try {
 } catch (e){
   throw new Error('This package requires discord.js to work.');
 };
+
 /**
  * The options for this pagination instance.
  * @typedef {Object} PaginationOptions
@@ -29,6 +30,7 @@ try {
  */
 module.exports = class Paginate {
   constructor(array, message, options = {}){
+    const D = require('discord.js');
     if (!Array.isArray(array)) throw new Error('The first argument must be array of MessageEmbeds, received ' + typeof array);
     if (!(message instanceof D.Message)) throw new Error('The second argument must be a Discord Message Instance.');
     if (typeof options !== 'object' || Array.isArray(options)) throw new Error('The third argument must be PaginationOptions.');
