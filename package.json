@@ -1,0 +1,30 @@
+{
+  "name": "discordjs-paginate",
+  "version": "0.0.1-bunny",
+  "description": "A simple utility with plenty of controls to paginate discord message embeds with the discord.js library. ",
+  "main": "index.js",
+  "engines":{
+    "node": ">=14"
+  },
+  "exports": {
+    ".": [
+      {
+        "require": "./index.js"
+      },
+      "./index.js"
+    ]
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mai-bot/"
+  },
+  "keywords": [
+    "paginate",
+    "discord.js"
+  ],
+  "author": "Sakurajimai#6742",
+  "license": "MIT"
+}
