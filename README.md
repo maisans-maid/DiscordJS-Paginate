@@ -31,7 +31,7 @@ new Paginate(embeds, message, options)
 [options](#PaginationOptions)|object|`{}`|true|The options for this pagination instance
 
 ### Allowing other users to paginate
-To allow other users on paginating the embed, you will just have to pass a new filter function to the PaginationOptions field.
+To allow other users on paginating the embed, you will just have to pass a new filter function to the PaginationOptions field. Note: This replaces the default filter function used in the class.
 ```js
 new Paginate(embeds, message, {
   // allows all user and reaction to be processed
