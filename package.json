@@ -1,9 +1,9 @@
 {
   "name": "discordjs-paginate",
-  "version": "0.0.1-bunny",
+  "version": "0.0.1",
   "description": "A simple utility with plenty of controls to paginate discord message embeds with the discord.js library. ",
   "main": "index.js",
-  "engines":{
+  "engines": {
     "node": ">=14"
   },
   "exports": {
