@@ -84,7 +84,7 @@ module.exports = class Paginate {
     if (this.editFrom){
       this.reactionmessage = await this.editFrom.edit(this._array[0]).catch(err => { return {error: err}});
     } else {
-      this.reactionmessage = await this.message.channel.send(this._array[0]).catch(err => { return {error: err}});
+      this.reactionmessage = await this.message.channel.send({ embed: this._array[0] }).catch(err => { return {error: err}});
     };
 
     if (this.reactionmessage.error){
