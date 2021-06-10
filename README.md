@@ -14,7 +14,7 @@ const { MessageEmbed } = require('discord.js');
 const Paginate = require('discordjs-paginate');
 
 // Build the embeds beforehand and place them inside an array
-const embeds = [ new MessageEmbed(), new MessageEmbed(), new MessageEmbed]
+const embeds = [ new MessageEmbed(), new MessageEmbed(), new MessageEmbed() ]
 
 // Pass in the array of message embeds and the discord.js message instance, then execute by using the exec() function
 new Paginate(embeds, message).exec()
@@ -183,3 +183,37 @@ appendPageInfo|`boolean`|Whether to append the page info on the footer.|
 pageInfoFormat|`string`|The format for the page info.|
 disableWrap|`boolean`|Whether to stop the collector when it reaches the max page, works only if prevbutton is disabled.|
 editFrom|[`Message`](https://discord.js.org/#/docs/main/stable/class/Message)|The message object that pagination will use to edit instead of sending a new one.|
+
+
+## Simple Example
+```js
+const Discord = require('discord.js');
+	const Paginate = require('discordjs-paginate');
+	const client = new Discord.Client({
+		intents: [Discord.Intents.ALL],
+		partials: ['USER', 'CHANNEL', 'GUILD_MEMBER', 'MESSAGE', 'REACTION']
+	});
+
+	client.on('message', (message) => {
+		if (message.content.startsWith('paginate')) {
+
+			// Note: U have to define embeds here by making an array for the embeds
+			/*
+			const embeds = [ new Discord.MessageEmbed().setTitle('First'), new Discord.MessageEmbed().setTitle('Second'), new Discord.MessageEmbed().setTitle('Third')]
+			*/
+			const paginate = new Paginate(embeds, message, {
+				appendPageInfo: true,
+				timeout: 60000,
+				previousbtn: '841961355799691264',
+				nextbtn: '841961438884003870',
+				stopbtn: '841962179490349068',
+				// removeUserReactions: message.channel.type !== 'dm'
+				removeUserReactions: false,
+				removeAllReactions: false
+			});
+			await paginate.exec();
+		}
+	});
+
+client.on('ready', () => console.log(`Ready`))
+```
