@@ -4,6 +4,11 @@ A simple utility with plenty of controls to paginate discord message embeds with
 This project was initially intended to use for [Mai](https://github.com/maisans-maid/Mai), however, you can use this utility too. If you find any bugs/issues, don't hesitate to open an issue or make a pull request.
 
 ## Installation
+For v12 of discord.js
+```
+npm i discordjs-paginate@0.0.5-bunnygirl
+```
+For the master dev branch of discord.js
 ```
 npm i discordjs-paginate
 ```
