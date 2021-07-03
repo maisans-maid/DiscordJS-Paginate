@@ -82,9 +82,9 @@ module.exports = class Paginate {
     };
 
     if (this.editFrom){
-      this.reactionmessage = await this.editFrom.edit({ embed: this._array[0] }).catch(err => { return {error: err}});
+      this.reactionmessage = await this.editFrom.edit({ embeds: [this._array[0]] }).catch(err => { return {error: err}});
     } else {
-      this.reactionmessage = await this.message.channel.send({ embed: this._array[0] }).catch(err => { return {error: err}});
+      this.reactionmessage = await this.message.channel.send({ embeds: [this._array[0]] }).catch(err => { return {error: err}});
     };
 
     if (this.reactionmessage.error){
@@ -123,9 +123,9 @@ module.exports = class Paginate {
     };
     this._index++;
     if (this._index === this._array.length - 1 && this.disableWrap){
-        return this.reactionmessage.edit(this._array[this._index]).then(() => this.stop());
+        return this.reactionmessage.edit({ embeds: [this._array[this._index]] }).then(() => this.stop());
     };
-    return this.reactionmessage.edit({ embed: this._array[this._index] })
+    return this.reactionmessage.edit({ embeds: [this._array[this._index]] })
   };
 
   /**
@@ -140,7 +140,7 @@ module.exports = class Paginate {
     };
     if (this._index === 0) this._index = this._array.length;
     this._index--;
-    return this.reactionmessage.edit({ embed: this._array[this._index] });
+    return this.reactionmessage.edit({ embeds: [this._array[this._index]] });
   };
 
   /**
