@@ -96,7 +96,7 @@ module.exports = class Paginate {
         if (prop === 'previous' && !this.includePrevBtn || prop === 'stop' && !this.includeStopBtn) continue;
         await this.reactionmessage.react(reaction);
       };
-      this.collector = this.reactionmessage.createReactionCollector(this.filter, { idle: this.timeout, dispose: !this.removeUserReactions })
+      this.collector = this.reactionmessage.createReactionCollector({ idle: this.timeout, filter: this.filter, dispose: !this.removeUserReactions })
       .on('collect', async reaction => await collect(reaction))
       .on('remove', async reaction => this.removeUserReactions === false ? await collect(reaction) : null)
       .on('end', async () => {
