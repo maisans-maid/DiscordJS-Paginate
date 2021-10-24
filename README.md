@@ -12,6 +12,10 @@ For the master dev branch of discord.js
 ```
 npm i discordjs-paginate
 ```
+Test the current build
+```
+npm i github:maisans-maid/DiscordJS-Paginate#master
+```
 
 ## Basic Usage Example
 ```js
