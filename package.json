@@ -1,10 +1,10 @@
 {
   "name": "discordjs-paginate",
-  "version": "0.0.8-bunnygirl",
+  "version": "0.0.9-usagishoujo",
   "description": "A simple utility with plenty of controls to paginate discord message embeds with the discord.js library. ",
   "main": "index.js",
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "exports": {
     ".": [
@@ -15,7 +15,7 @@
     ]
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",

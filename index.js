@@ -1,173 +1,192 @@
-try {
-  const D = require('discord.js');
-} catch (e){
-  throw new Error('This package requires discord.js to work.');
-};
+const { MessageActionRow, MessageButton, Message, Interaction } = require('discord.js');
 
 /**
  * The options for this pagination instance.
- * @typedef {Object} PaginationOptions
- * @property {function} [filter] The filter function for the collector
- * @property {number} [timeout] The timeout to use in milliseconds
- * @property {boolean} [includeStopBtn] Whether to include a stop button, defaults to true
- * @property {boolean} [includePrevBtn] Whether to include a previous button, defaults to true
- * @property {string} [previousbtn] The Emoji ID or Emoji Unicode to use as previous button
- * @property {string} [nextbtn] The Emoji ID or Emoji Unicode to use as next button
- * @property {string} [stopbtn] The Emoji ID or Emoji Unicode to use as stop button
- * @property {boolean} [removeUserReactions] Whether to remove user reactions upon pagination
- * @property {boolean} [removeAllReactions] Whether to remove all reactions upon end of pagination
- * @property {boolean} [appendPageInfo] Whether to append the page info on the footer
- * @property {string} [pageInfoFormat] The format for the page info
- * @property {boolean} [disableWrap] Whether to stop the collector when it reaches the max page, works only if prevbutton is disabled
- * @property {Message} [editFrom] the Message Object to edit, if none, will send message instead
+ * @typedef {object} PaginationOptions
+ * @property {boolean} disableWrap Whether to disable the page wrapping or not
+ * @property {number} timeout The timeout to use in milliseconds
+ * @property {string} errorMessage The message to send to user when using a pagination that is not instantiated by them
+ * @property {boolean} disableButtonsOnFinish Whether to disable all the buttons when the pagination ends, defaults to false
+ * @property {boolean} removeButtonsOnFinish Whether to remove all the buttons when the pagination ends, defaults to false
+ * @property {boolean} appendPageInfo Whether to append a page number to the footer of the embed, defaults to false
+ * @property {string} pageInfoFormat The format of the pageInfo to append
+ **@property {[UserId]} allowedUsers Array of user ids allowed to control the pagination embed
+ * @property {ButtonOptions} previous The option for the previous button
+ * @property {ButtonOptions} next The option for the next button
+ * @property {ButtonOptions} stop The option for the stop button
+ * @property {Message} editFrom the Message Object to edit, if none, will send message instead
  */
 
 /**
- * Ease pagination of MessageEmbeds
- * @param {MessageEmbed} array array of MessageEmbeds to paginate
- * @param {Message} message The Message reference
- * @param {PaginationOptions} options The options for this pagination instance
+  * The options for each button.
+  * @typedef {object} ButtonOptions
+  * @property {string} label The text to be displayed on this button
+  * @property {MessageButtonStyle} style Style for this button
+  * @property {RawEmoji} emoji Emoji for this button
+  * @property {boolean} disable Make this button disabled throughout the whole pagination process.
+  * @property {boolean} exclude Do not show this button on the pagination embed
  */
-module.exports = class Paginate {
-  constructor(array, message, options = {}){
-    const D = require('discord.js');
-    if (!Array.isArray(array)) throw new Error('The first argument must be array of MessageEmbeds, received ' + typeof array);
-    if (!(message instanceof D.Message)) throw new Error('The second argument must be a Discord Message Instance.');
-    if (typeof options !== 'object' || Array.isArray(options)) throw new Error('The third argument must be PaginationOptions.');
-    if (options.editFrom && !(options.editFrom instanceof D.Message)) throw new Error('PaginationOptions#editFrom must be a Discord Message Instance.');
 
-    Object.defineProperty(this, 'message', { value: message });
+module.exports = class DiscordJSPaginate {
+  constructor(array, message, options = {}){
+    if (!Array.isArray(array))
+        throw new Error('The first argument must be array of MessageEmbeds, received ' + typeof array);
+
+    if (message instanceof Interaction)
+        Object.defineProperty(this, 'interaction', { value: message });
+
+    if (message instanceof Message)
+        Object.defineProperty(this, 'message', { value: message });
+
+    if (!this.interaction && !this.message)
+        throw new Error('The second argument must be a Discord Message or Interaction instance.');
+
+    if (typeof options !== 'object' || Array.isArray(options))
+        throw new Error('The third argument must be PaginationOptions.');
+
+    if (options.editFrom && !(options.editFrom instanceof Message))
+        throw new Error('PaginationOptions#editFrom must be a Discord Message instance.');
+
     Object.defineProperty(this, 'editFrom', { value: options.editFrom || null });
 
     this._array = [ ...array ].flat();
     this._index = 0;
     this.collector = null;
-    this.reactionmessage = null;
+    this.componentMessage = null;
     this.btn = {};
-    this.disableWrap = options.disableWrap === true && !options.includePrevBtn ? true : false;
+    this.disableWrap = options.disableWrap === true ? true : false;
+    this.timeout = typeof options.timeout === 'number' ? options.timeout : 9e4;
+    this.errorMessage = typeof options.errorMessage === 'string' ? options.errorMessage : 'You cannot use this component!';
+    this.allowedUsers = Array.isArray(options.allowedUsers) ? options.allowedUsers : [];
 
-    if (options.appendPageInfo === true){
+    if (this.interaction) this.allowedUsers.push(this.interaction.user.id);
+    if (this.message)     this.allowedUsers.push(message.author.id);
+
+    this.options = options;
+
+    for (const prop of ['disableButtonsOnFinish', 'removeButtonsOnFinish', 'appendPageInfo']){
+      this[prop] = typeof options[prop] === 'boolean' ? options[prop] : false;
+    };
+
+    for (const [prop, key, def, style] of [['previous', 'previousbtn', '◀', 'SECONDARY'], ['next', 'nextbtn', '▶', 'SECONDARY'], ['stop', 'stopbtn', '❌', 'DANGER']]){
+      if (options[prop]?.exclude === true) continue;
+      this.btn[prop] = new MessageButton().setCustomId(prop).setLabel(options[prop]?.label || def).setStyle(options[prop]?.style || style).setDisabled(options[prop]?.disable === true ? true : false);
+      if (options[prop]?.emoji) this.btn[prop].setEmoji(options[prop]?.emoji);
+    };
+
+    if (this.appendPageInfo === true){
       for (const [index, embed] of this._array.entries()){
         if (!embed.footer) embed.footer = {};
-        const format = typeof options.pageInfoFormat === 'string' ? options.pageInfoFormat : 'Page %page of %total.' + (embed.footer.text ? '\u2000|\u2000' : '');
+        const format = typeof options.pageInfoFormat === 'string' ? options.pageInfoFormat : 'Page %page of %total' + (embed.footer.text ? '\u2000|\u2000' : '');
         embed.footer.text = format.replace(/\%page|\%total/g, x => { return {'%page': index + 1, '%total': this._array.length }[x]}) + (embed.footer.text || '');
       };
     };
-    for (const [prop, type, def] of [['timeout', 'number', 9e4 ], ['filter', 'function', (_, user) => user.id === this.message.author.id ]]){
-      this[prop] = typeof options[prop] === type ? options[prop] : def;
-    };
-    for (const [prop, key, def] of [['previous', 'previousbtn', '◀'], ['next', 'nextbtn', '▶'], ['stop', 'stopbtn', '❌']]){
-      this.btn[prop] = options[key]?.id || options[key] || def;
-    };
-    for (const prop of ['removeAllReactions', 'removeUserReactions', 'includePrevBtn', 'includeStopBtn', 'appendPageInfo']){
-      if (typeof options[prop] === 'boolean'){
-        this[prop] = options[prop]
-      } else {
-        this[prop] = options[prop] === undefined ? true : false;
-      };
-    };
   };
 
-  /**
-   * Executes this pagination function
-   * @return {Promise<ReactionCollector>}
-   */
   async exec(){
-    const collect = async ({ emoji: { name, id }, users }) => {
-      const filter = (key) => [name, id].includes(this.btn[key]);
-      const getKey = () => Object.keys(this.btn).find(key => filter(key));
-      await this[getKey()]().catch(console.error);
-      this.removeUserReactions ? await users.remove(this.message.author.id) : undefined;
-      return;
-    };
+    if (!Object.keys(this.btn).length) throw new Error('Pagination cannot start as all of the navigation buttons are disabled.');
+    if (!Object.values(this.btn).some(button => !button.disabled)) throw new Error('Pagination cannot start as all of the navigation buttons are disabled.')
+    if (this.disableWrap) this.btn.previous.setDisabled(true);
+
+    const firstMessage = this.generateWEMO(this._array[0]);
 
     if (this.editFrom){
-      this.reactionmessage = await this.editFrom.edit({ embeds: [this._array[0]] }).catch(err => { return {error: err}});
-    } else {
-      this.reactionmessage = await this.message.channel.send({ embeds: [this._array[0]] }).catch(err => { return {error: err}});
+      this.componentMessage = await this.editFrom.edit(firstMessage);
+    } else if (this.interaction){
+       this.componentMessage = await ((this.interaction.deferred || this.interaction.replied) ? this.interaction.editReply(firstMessage) : this.interaction.reply(firstMessage));
+    } else if (this.message){
+      this.componentMessage = await this.message.channel.send(firstMessage);
     };
 
-    if (this.reactionmessage.error){
-      return Promise.reject(this.reactionmessage.error);
-    } else if (this._array.length == 1){
-      return Promise.resolve(this.reactionmessage);
-    } else {
-      for (const [prop, reaction] of Object.entries(this.btn)){
-        if (prop === 'previous' && !this.includePrevBtn || prop === 'stop' && !this.includeStopBtn) continue;
-        await this.reactionmessage.react(reaction);
+    this.collector = this.componentMessage.createMessageComponentCollector({ componentType: 'BUTTON', time: this.timeout });
+
+    this.collector
+    .on('collect', i => {
+      if (!this.allowedUsers.includes(i.user.id)) return i.reply({ content: this.errorMessage, ephemeral: true });
+      if (i.customId === 'previous')              return i.update(this.previous());
+      if (i.customId === 'next')                  return i.update(this.next());
+      if (i.customId === 'stop')                  return this.stop();
+    })
+    .on('end', collected => {
+      let components = [ new MessageActionRow().addComponents(...Object.keys(this.btn).map(button => this.btn[button].setDisabled(true))) ];
+      if (this.removeButtonsOnFinish) components = [];
+      if (collected.last()){
+        return collected.last().update({ embeds: [this.currentPage()], components });
+      } else {
+        return this.componentMessage.edit({ embeds: [this.currentPage()], components });
       };
-      this.collector = this.reactionmessage.createReactionCollector({ idle: this.timeout, filter: this.filter, dispose: !this.removeUserReactions })
-      .on('collect', async reaction => await collect(reaction))
-      .on('remove', async reaction => this.removeUserReactions === false ? await collect(reaction) : null)
-      .on('end', async () => {
-        this.removeAllReactions && !this.reactionmessage.deleted ? await this.reactionmessage.reactions.removeAll().catch(() => {}) : null;
-        return this.destroy();
-      });
-      return Promise.resolve({ collector: this.collector, message: this.reactionmessage });
-    };
-  };
+    });
 
-
-  /**
-  * Moves the index up to view the next element from the array
-  * Circular - will revert to 0 if the index exceeds array length
-  * @return {?Message} The Message Object of the edited message
-  */
-  next(){
-    if (!this.executed) return Promise.reject('Paginate#next: You need to call exec() first before using other functions.');;
-    if (!this._array.length){
-      return undefined;
-    };
-    if (this._index === this._array.length - 1){
-      this._index = -1;
-    };
-    this._index++;
-    if (this._index === this._array.length - 1 && this.disableWrap){
-        return this.reactionmessage.edit({ embeds: [this._array[this._index]] }).then(() => this.stop());
-    };
-    return this.reactionmessage.edit({ embeds: [this._array[this._index]] })
+    return { collector: this.collector, message: this.componentMessage };
   };
 
   /**
-  * Moves the index down to view the previous element from the array
-  * Circular - will revert to the max index if the index is less than 0
-  * @returns {Message} The Message Object of the edited message
-  */
-  previous(){
-    if (!this.executed) return Promise.reject('Paginate#previous: You need to call exec() first before using other functions.');
-    if (!this._array.length){
-      return undefined;
-    };
-    if (this._index === 0) this._index = this._array.length;
-    this._index--;
-    return this.reactionmessage.edit({ embeds: [this._array[this._index]] });
-  };
-
-  /**
-  * Stops this pagination
-  * @returns {Collector#event.end} Emitted when the collector is finished collecting.
-  */
-  stop(){
-    if (!this.executed) return Promise.reject('Paginate#stop: You need to call exec() first before using other functions.');
-    return Promise.resolve(this.collector?.stop());
-  };
-
-  /**
-   * Removes all references for this instance and prepares it for garbage collection
-   * @return {this} empty object
+   * Generate the next (, previous, and stop, if included) button;
+   * @return {MessageActionRow} [Represents an action row containing message components.]
    */
-  destroy(){
-    for (const prop of Object.keys(this)){
-      delete this[prop];
-    };
+  generateComponents(){
+    return new MessageActionRow().addComponents(...Object.values(this.btn));
+  };
+
+  /**
+   * Restores disabled buttons to their active state
+   * @return {Paginate} [This module]
+   */
+  restoreComponents(){
+    Object.keys(this.btn).forEach(button => this.btn[button] = this.options[button]?.disable === true ? this.btn[button] : this.btn[button].setDisabled(false));
     return this;
   };
 
   /**
-   * Checks if exec function has been used or not.
-   * @return {boolean} Whether the exec function has been used or not.
+   * Generates a WebhookEditMessageOptions.
+   * @param  {MessageEmbed} embed The MessageEmbed instance to display on the paginator's current state.
+   * @return {WebhookEditMessageOptions} Options that can be passed into editMessage.
    */
-  get executed(){
-    return Boolean(this.reactionmessage);
+  generateWEMO(embed){
+    return { embeds: [embed], components: [ this.generateComponents() ] }
+  };
+
+  /**
+   * Cycle backwards through the MessageEmbed array and get the current page's Message Embed.
+   * @return {WebhookEditMessageOptions} Options that can be passed into editMessage.
+   */
+  previous(){
+    this._index --;
+    if (this.disableWrap && this._index === 0) this.btn.previous.setDisabled(true);
+    if (this.disableWrap && this.btn.previous.disabled && this._index !== 0 && !(this.options.previous?.disable === true)) this.btn.previous.setDisabled(false);
+    if (this.disableWrap && this.btn.next.disabled && this._index === this._array.length - 2) this.btn.next.setDisabled(false);
+    if (this._index < 0) this._index = this._array.length - 1;
+
+    return this.generateWEMO(this.currentPage());
+  };
+
+  /**
+   * Cycle forwards through the MessageEmbed array and get the current page's Message Embed.
+   * @return {WebhookEditMessageOptions} Options that can be passed into editMessage.
+   **/
+  next(){
+    this._index ++;
+    if (this.disableWrap && this._index === this._array.length - 1) this.btn.next.setDisabled(true);
+    if (this.disableWrap && this.btn.next.disabled && this._index !== this._array.length - 1 && !(this.options.next?.disable === true)) this.btn.next.setDisabled(false);
+    if (this.disableWrap && this.btn.previous.disabled && this._index === 1) this.btn.previous.setDisabled(false);
+    if (this._index > this._array.length - 1) this._index = this._array = 0;
+
+    return this.generateWEMO(this.currentPage());
+  };
+
+  /**
+   * Force stop this instance's component collector and emit the end event.
+   * @return {void}
+   */
+  stop(){
+    this.collector.stop();
+  };
+
+  /**
+   * Get the MessageEmbed of the current page.
+   * @return {[type]} [description]
+   */
+  currentPage(){
+    return this._array[this._index];
   };
 };
